@@ -1,0 +1,126 @@
+// Getting started then debugging...- https://youtu.be/5IuZ-E8Tmhg, https://youtu.be/oHHOCdmLiII, https://youtu.be/J8zc8mMNKtc
+// Platformio & espidf- https://youtu.be/K-9oDE0-XsE
+    // Platformio- has integrated debugger, static code analysis, unit testing (for diff target platforms?), remote dev (SSH&VM?)
+    // Logging- see main.cpp...
+// Project- https://youtu.be/31GT7lSAVsE
+// Reddit abt difficult setup- https://www.reddit.com/r/esp32/comments/1mtihjz/espidf_installation_is_getting_me_crazy/
+// To dos- fix /ucrt64/bin/python (still v3.14... fix is to just move envi vars...)
+
+// To write in C++ instead of C- rename main.c to main.cpp, update CMakeLists.txt..., 
+    // extern "C" void app_main(void) { ... } (C linkage... Name Mangling?)
+// e.g. camera_config_t (method/type)- F12 to check typedef...
+
+// 3 ways to start espidf- 
+    // Platformio (but older version?)- see more below...
+    // EIM (espidf installation manager)- follow online docu..., run C:/esp/v6.0.2/esp-idf/install.bat
+        // Preferences: Open User Settings (JSON)- add- 
+/*
+    "ESP-IDF": {
+        "path": "cmd.exe",
+        "args": [
+            "/k",
+            "C:/esp/v6.0.2/esp-idf/export.bat"
+        ]
+    },
+*/
+    // Espidf vscode extension (used this)- follow instructions in extension...
+        // ctrl+shift+P- or just use the extension...
+            // ESP-IDF: Open ESP-IDF Installation Manager
+            // ESP-IDF: Select Current ESP-IDF Version
+            // ESP-IDF: Open ESP-IDF Terminal
+        // idf.py create-project -p . <name>
+        // start idf.py menuconfig- remove start (start to launch idf.py as separate program...)
+        // components/, git clone <repository> <directory>
+
+// 3 ways to import library- 
+    // platformio.ini... library... (doesn't work w/ espidf but good for arduino?)
+    // components/ then git clone <repo>, 
+        // then cd components/esp32-camera then git checkout v2.0.5
+        // then disabled online component manager in platformio.ini- 
+/*
+board_build.cmake_extra_args = 
+    -DIDF_COMPONENT_MANAGER=0
+*/
+        // then configured platformio.ini & CMakeLists.txt...
+        // v2.0.5
+        // FLASH & PSRAM to 80MHz, Flash to 4MB
+    // idf_components.yml
+    // KConfig
+
+// Esp-idf- SDK (choosing factors are language&features&support&debugging), entirely hosted on github & open-source, 
+    // Workflow (choose IDE..., installation, create proj, 
+        // config to generate sdkconfig > build [compile then link to generate .bin] > flash [rst esp32 into firmware dl mode then write .bin into flash] > 
+        // monitor [rst esp32 into execution mode then monitor log output...])
+        // see generated files on notes..., h/w on notes...
+    // Program Model- multithreading (or tasks in FreeRTOS, not just superloop that gets stuck...) via FreeRTOS
+        // FreeRTOS- C, usually implemented as inf loop, tasks can block on events (doesn't consume CPU time) & can give events (unblock other tasks), 
+        // Func must never return (void), more abt FreeRTOS on notes...
+        // 
+// Esp-idf (iot dev framework by espressif) vs arduino ide & micropython (simpler)
+
+// Menuconfig- seen in platformio&extension... Platform > Run Menuconfig; FreeRTOS & filesystem support & LWIP...; 
+    // adjust clock speed / cpu freq, flash mem size, 
+// CMake (to generate build files...), Ninja (small bld system w/ focus on speed), Xtensa (for Xtensa procie)
+// sdkconfig, sdkconfig.old, version.txt..., build/
+    // ...-dirty- means some files were modified
+// Important files- bootloader.bin (.bin- load to MCU), partition-table.bin (firmware partition addr's), 
+    // <esp_proj>.bin, <esp_proj>.elf (for debugging firmware)
+
+// Reinstallations- 
+// Git (v2.55.0.windows.3)- https://youtu.be/TT8ktVp5j-k
+// Python (v3.13.14), pip (v26.1.2)
+// Espressif (v6.5.0 [platformio] but latest is v7.0.1), ESP-IDF (v5.1.2 [platformio] but latest is v6.0.2), 
+// C/C++ (), g++ (), gcc (), gdb ()
+// esp32-camera (v2.0.5 but latest is v2.1.7)
+// reinstallation- cmd- 
+    // where python, py
+    // py -0p
+    // C:\Espressif or esp-idf or esp
+    // where idf.py, esptool.py
+    // dir "%USERPROFILE%\.espressif"
+    // where gcc, g++, gdb, clang, cmake, make, mingw32-make, ninja, pacman (for MSYS2), git
+    // echo %PATH%
+// envi vars- arrange them accordingly...
+// python installation- 
+    // MSYS2- pacman -S mingw-w64-ucrt-x86_64-python-pip
+    // Powershell- py install 3.13, python --version, python -m pip --version
+    // ?- python -m ensurepip --upgrade
+
+// Issue- failures since espressif updated its package format recently 
+    // (subdependencies like esp_jepg and new metadata keys), platformio's 
+    // esp-idf 5.1.2 py toolchain had older component manager parser that 
+    // crashes when reading newer stuff...
+
+// Went back to platformio but did components/ then git clone <repo>... see more above...
+// platformio.ini- 
+/*
+[env:esp32cam]
+platform = espressif32
+board = esp32cam
+framework = espidf
+
+monitor_speed = 115200
+
+; Serial monitor configurations
+monitor_filters = esp32_exception_decoder
+
+; Compiler Flags for Hardware & Camera Support
+build_flags = 
+    ; Enable external PSRAM (essential for high-res frame buffers)
+    -DBOARD_HAS_PSRAM
+    ; Fix for ESP32 PSRAM CPU cache bug
+    -mfix-esp32-psram-cache-issue
+
+board_build.cmake_extra_args = 
+    -DIDF_COMPONENT_MANAGER=0
+*/
+src/CMakeLists.txt- 
+/*
+idf_component_register(
+    SRCS "main.cpp"
+    INCLUDE_DIRS "."
+    REQUIRES esp32-camera
+)
+*/
+
+// ESP-IDF again... fixed python (envi vars sequence...)

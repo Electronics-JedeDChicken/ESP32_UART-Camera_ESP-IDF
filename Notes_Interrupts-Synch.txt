@@ -1,0 +1,121 @@
+Interrupt- read_sensor()... processing img but then btn pressed so immediately jump to ISR
+*Tell CPU to pause what it's doing since something "more" important happened, after ISR then resume...
+vs Normal- e.g. while(1) {check_btn() -> read_sensor() -> send_uart()}
+*If btn is pressed while CPU is busy readings sensor then it might not notice it
+vs Polling- CPU checks repeatedly
+*Also only read per cycle...
+
+Btn Bounce- mech btn's don't produce clean transition (e.g. LOW->HIGH but actually HIGH->LOW->HIGH->LOW->HIGH w/in few ms thus 1 press may trigger multiple intr's)
+*Due to noise/non-idealities...
+*Soln's- 
+    *Ignore intr's that occur w/in 20-50ms of last 1 (s/w debounce)
+    *Disable intr briefly & re-enable after debounce interval
+    *H/w debounce (e.g. RC ckt or dedicated IC)
+
+GPIO Intr Types- disabled, posedge, negedge, anyedge, low-level, high-level (rare)
+
+Intr Prio- 1(lowest), 7(highest)
+*We usually don't choose prio... when we create (gpio?) intr mngr (see below...) is it automatically assigns appropriate lvl
+*Most GPIO intr's use relatively low prio by default
+*esp_intr_alloc()?
+
+Higher prio task- suppose you give gpio intr the lowest prio, this still means that it will be prioritized over normal tasks right?
+*Intr prio & Task prio are separate (Intr prio > Task prio always)
+If ISR wakes low-prio task then nothing changes (higher-prio task keeps on running)
+*Low prio isn't ignored but its state changes to ready
+*FreeRTOS task states- Running, Ready (can run, waiting for CPU), Blocked (waiting, queue/semaphore/delay), Suspended (explicitly)
+*Intr states (not formal but mental model)- Disabled > Enabled(Waiting) > (Event occurs) > Pending > (CPU accepts it) > Running ISR > ISR finishes > Enabled(Waiting)
+
+ISR- func that runs when intr occurs
+*Not normal func- executed by interrupt controller
+*Flash vs IRAM- see below...
+
+Rule of Thumb- keep ISRs short (must finish w/in few micros, like flag/notif, musn't do entire job)
+*We can just wake the task needed
+*E.g. notif taks, give semaphore, send data to queue, set event bit, update small variable, exit quickly
+    *Not- delay, allocate lots of mem, complicated operations
+
+ISR Types (...FromISR() funcs in FreeRTOS)- see below...
+
+Implementation (espidf, freertos)- steps are config pin > start gpio intr dispatcher > associate gpio w/ an ISR
+*GPIO config- see docu...
+    *Set- pin_bit_mask = 1ULL << <gpio_pin(s)>... to config multiple GPIOs at once
+        *e.g. 1ULL << 5 then ...0050000...
+        *ULL (Unsigned Long Long) is just int but since GPIOs can be more than 31 (32-bit...) then ULL is 64bits (w/o it then 1 << 40 would overflow)
+    *Mode- disable/input/output/input-output
+    *Pull mode (instead of floating...)- pullup/pulldown (don't use together?)
+    *Intr type- see above...
+        *For these is we can create gpio_config_t struct then pass by ref to gpio_config()...
+        *Since func sign is esp_err_t gpio_config(const gpio_config_t *pGPIOCOnfig);
+*Install ISR- gpio_install_isr_service(0);, creates interrupt manager / dispatcher?
+    *Only 1 since ISR service is shared (by multiple GPIOs...)
+    *0 arg- func sign is esp_err_t gpio_install_isr_service(int intr_alloc_flags);
+        *ESP_INTR_FLAG_LEVEL1 means prio lvl 1, there's also ESP_INTR_FLAG_IRAM, but usually put 0 (default alloc)
+*Attach/Register ISR- gpio_isr_handler_add(<gpio_pin>, <ISR_name>, <args for ISR, usually NULL?, pass by ref?>);
+    *Pass func itself (by ref so no (), adding () is func call/invoke?)
+*Declare&Implement ISR- (static) void IRAM_ATTR <ISR_name>(void *arg)
+    *Normal funcs live in flash (but during operations like read / disabled cache is flash can't be accessed), 
+    *So intr's should execute from IRAM (Instruction RAM)
+/*
+TaskHandle_t <task>;
+void <task>(void *Parameter);
+
+void IRAM_ATTR <ISR_name>(void *arg) {
+    BaseType_t higherPriorityTaskWoken = pdFALSE;
+    // All ISRs have this?, FreeRTOS sets this to pdTRUE if higher-prio task becomes ready
+    // E.g. 
+
+    vTaskNotifyGiveFromISR(<task>, &higherPriorityTaskWoken);
+    // Wake a FreeRTOS task
+
+    if (higherPriorityTaskWoken) {
+        portYIELD_FROM_ISR();  // Scheduler immediately (context) switch to highest-prio unblocked/ready task if needed
+        // W/o this is scheduler waits til nxt tick (usually only few ms but we often want immediate response)
+    }
+    // if (taskWoken) {portYIELD_FROM_ISR();}
+}
+
+void <task>(void *Parameter) {
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  // Sleep 4ever, wake when notified, run, sleep again
+    <func_to_do>();
+}
+*/
+
+W/o RTOS (intr simply intr's CPI) vs W/ FreeRTOS (intr may need to wake task, thus we have ...FromISR() funcs)
+*Rule of Thumb- don't call normal FreeRTOS APIs from ISR, normal APIs assume they're running inside task & ISR isn't task
+    *What will happen- 
+    *vTaskNotifyGiveFromISR()- wake 1task, no data, fastest, great replacement for binary semaphores
+    *xQueueSendFromISR() instead of xQueueSend() (this is used for tasks not ISRs)- send data (to queue?), pass data bet. contexts, FIFO
+    *xSemaphoreGiveFromISR()- signal smthng/event happened, carries no data, just synch, can be used by mutliple tasks
+    *xEventGroupSetBitsFromISR()- set flags, 1obj many flags, for waiting for multiple indep events
+    *vTaskDelay()- never
+    *Notif vs Queue vs Semaphore, examples...- 
+
+Other Concepts
+Context switch- 
+*E.g. task is sleeping > btn ISR > wakes task > should it wait? no since higher prio > switch immediately (no idle?)
+*Context- everything needed to resume execution (for task then PC, registers, stack pointer, CPU state...)
+
+Crit Sections- sometimes we don't want intr's
+/*
+taskENTER_CRITICAL();
+<>  // Intr's are disabled here (up to configurable prio?), must also be very short
+taskEXIT_CRITICAL();
+*/
+
+Shared variables- avoid having task and ISR share variables (race condition)
+
+Other APIs- see notes...
+
+Questions
+Other srcs of intr's beside GPIO- comms, timers&counters, sensors, other events...
+
+Synchronization Primitives- 
+*Binary Semaphore- to signal an event, ISR gives while Task takes, 0/1, no ownership, ISR-safe (GiveFromISR), e.g. btn press
+*Counting Semaphore- like binary but counts multiple events, ISR gives 3x (e.g. UART receive 3 packets), resource pool w/ N identical resources
+*Mutex- to protect shared resources, has ownership, prevents simultaneous access, supports prio inheritance
+*Recursive Mutex- same task can lock multiple times, for nested func calls
+    *The 2 mutex musn't be used in ISR
+*Queue- 
+*Task Notif- 
+*Event Group- 

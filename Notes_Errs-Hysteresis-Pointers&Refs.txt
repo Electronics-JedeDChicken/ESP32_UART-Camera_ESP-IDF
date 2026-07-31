@@ -1,0 +1,72 @@
+Memory
+*E.g. int x = 10;
+Addr | Val
+0x1000 | 10
+*x is just variable stored somewhere in RAM (to refer to that addr?)
+
+Pointers- stores adr not val, since copying large obj's is expensive (e.g. large array/dstruct?)
+int x = 10;
+int* ptr = &x;  // ptr now stores addr of x, dtype matters...
+*& (Address-of operator), * (Deref operator)
+*ptr = 99;  // x becomes 99
+ptr = nullptr  // Now points to nothing, always check before dereferencing else crash / undefined behavior
+
+E.g.
+camera_fb_t* pic = esp_camera_fb_get();  // RHS returns addr of framebuffer
+*To access fields/attrs? then pic->len (equivalent to (*pic).len, Arrow operator)
+
+Pointers as Params
+void foo(int* value) {
+    *value = 0;
+}
+int* ptr = &x;
+foo(ptr)  // x becomes 0
+
+const w/ Pointers
+const int* ptr1 = &x1  // Pointer to const
+*ptr1 = 5;  // Err, can't modify
+int* const ptr2 = &x2  // Const pointer, can modify value but can't modify where it points
+const int* const ptr3 = &x3  // Const pointer to const, nothing can change
+
+References- suppose we have variable x, we reference r to x, r is an alias (w/in prog lang?) not another variable
+*How is ref stored- C++ std doesn't require ref's to occupy mem, compiler is free to implement it however it wants 
+    *(internally use hidden pointer, but for programmers is this is abstracted...)
+int x = 10;
+int &r = x;
+*Whatever happens to x also happens to y and vice versa (they're the same thing)?
+
+int& ref = x;
+ref = 20;  // x becomes 20
+
+Refs as Params
+void increment(int* value) {
+    (*value)++;
+}
+*This can be written as- 
+void increment(int& value) {
+    value++;  // No need for * operator
+}
+
+const w/ Refs
+const std::string& s  // Can be an arg
+*Benefits- no copying, can't modify, just access?, fast (one of the most common C++ func sign)
+
+Use pointers when obj may not exist or when ownership/lifetime matters, 
+
+Reliability- must have several layers...
+Integrity- did data arrive w/o being tampered / as intended
+*Threats- noise, loss, wrong (packet) order, duplicate, malicious modification
+*Diff soln's- hashing, salting, 
+Authentication (Integ+Secu, use digital signs), Authorization, Encryption, Compression
+Error Detection- parity bits (add extra bit), checksum (add all bytes), CRC (instead of simple addition is polynomial division over bits)
+Error Correction (ECC)- hamming code, read-solomon, BCH codes (improved hamming), LDPC, 
+Retransmission (ARQ, easier than ECC), seq #s, ACK/NACK, timeouts (then resend), 
+*Packet framing (metadata...) & length, escaping / byte stuffing?
+
+Hysteresis
+*E.g. you have 4 zones- 0-99 (1), 100-199, 200-299, 300-399 (4)
+*Instead of just checking if value read's w/in zone...
+*Since (analog) stuff have noise & if you ideally read 100- it actually "fluctuates" like 100-98-101-100
+*So you'll unintentionally jump zones- 2-1-2-2
+*So use hysteresis by expanding range that overlaps w/ other zones, but if you're currently in a zone is you won't jump immediately
+*E.g. you're in zone 2, range then becomes like 95-204... (allowance...)
