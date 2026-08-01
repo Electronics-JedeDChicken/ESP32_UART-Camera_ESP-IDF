@@ -223,7 +223,7 @@ void uartInit() {
     uart_driver_install(UART_CHANNEL, 1024, 0, 0, NULL, 0);
         // Set Comm Params- baud rate, data bits, stop bits; parity, flow ctrl
     uart_set_baudrate(UART_CHANNEL, 921600);
-    uart_set_word_length(UART_CHANNEL, UART_DATA_8_BITS);
+    uart_set_word_length(UART_CHANNEL, UART_DATA_8_BITS);  // Byte
     uart_set_stop_bits(UART_CHANNEL, UART_STOP_BITS_1);
         // Set Comm Pins- we use CH340...
         // Run UART Comm- sending/receiving data
@@ -258,6 +258,7 @@ void cameraTask(void *Parameters) {
 }
 
 // Funcs
+/*
 bool isBtnPressed(int state_prev) {  // Pass by val since just check val (didn't modify)
     int state_current = gpio_get_level(BTN_PIN);
     // return (state_prev == 1 && state_current == 0) ? true : false;  // Falling-edge (high-low) detection, Ternary operation
@@ -269,6 +270,7 @@ bool isBtnPressed(int state_prev) {  // Pass by val since just check val (didn't
         return false;
     }
 }
+*/
 
 void capture() {
     // ESP_LOGI(CAMERA_TAG, "Attempting to take picture...");
@@ -301,6 +303,9 @@ void capture() {
             else if (response == 'N') {
                 continue;
             }
+        }
+        else {
+            continue;
         }
     }
 

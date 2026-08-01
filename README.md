@@ -1,53 +1,31 @@
-| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-H21 | ESP32-H4 | ESP32-P4 | ESP32-S2 | ESP32-S3 | Linux |
-| ----------------- | ----- | -------- | -------- | -------- | -------- | --------- | -------- | --------- | -------- | -------- | -------- | -------- | ----- |
+# ESP32_ESP-IDF UART Camera
 
-# Hello World Example
+This project utilizes the esp32-camera library by Espressif Systems. Also, although the project uses the ESP-IDF framework is the code was still written in C++. The python receiver utilized the serial library.
 
-Starts a FreeRTOS task to print "Hello World".
+This UART Camera allows users to click the button to take a photo then transfer and save it serially to another computer via UART- 
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+1. The project utilizes a pull-up button with debounce and interrupt, and installed ISR (Interrupt Service Routine), instead of usual blocking polling.
 
-## How to use example
+2. FreeRTOS task, awaken by ISR, was also used for capturing the photos and sending UART header and image files.
 
-Follow detailed instructions provided specifically for this example.
+3. A baudrate of 921600 was used for more throughput.
 
-Select the instructions depending on Espressif chip installed on your development board:
+4. Features reliability by comparing received file size (from header) w/ the actual received image bytes, ACKs and NACKs, retransmissions (3 attempts), and timeouts.
 
-- [ESP32 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/stable/get-started/index.html)
-- [ESP32-S2 Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s2/get-started/index.html)
+5. The camera sensor was configured to have auto white balance, white balance gain, exposure, and gain.
 
+Further implementation will use CRC (Cyclic Redundancy Check) and packetization of data transmitted.
 
-## Example folder contents
+*To upload the code to the board-
 
-The project **hello_world** contains one source file in C language [hello_world_main.c](main/hello_world_main.c). The file is located in folder [main](main).
+1. Select the appropriate port, hold the FLASH button and when it starts to write, click the RST button (to reset the board into Firmware Download Mode).
 
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt` files that provide set of directives and instructions describing the project's source files and targets (executable, library, or both).
+2. When the upload succeeded, clik the RST button again (to reset the board into Execution Mode).
 
-Below is short explanation of remaining files in the project folder.
+*Then also run the receiver/receiver.py script. The photos will be saved in imgs/.
 
-```
-├── CMakeLists.txt
-├── pytest_hello_world.py      Python script used for automated testing
-├── main
-│   ├── CMakeLists.txt
-│   └── hello_world_main.c
-└── README.md                  This is the file you are currently reading
-```
+*References- 
 
-For more information on structure and contents of ESP-IDF projects, please refer to Section [Build System](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html) of the ESP-IDF Programming Guide.
+1. ESP-IDF Official Documentation- https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/index.html
 
-## Troubleshooting
-
-* Program upload failure
-
-    * Hardware connection is not correct: run `idf.py -p PORT monitor`, and reboot your board to see if there are any output logs.
-    * The baud rate for downloading is too high: lower your baud rate in the `menuconfig` menu, and try again.
-
-## Technical support and feedback
-
-Please use the following feedback channels:
-
-* For technical queries, go to the [esp32.com](https://esp32.com/) forum
-* For a feature request or bug report, create a [GitHub issue](https://github.com/espressif/esp-idf/issues)
-
-We will get back to you as soon as possible.
+2. esp32-camera- https://youtu.be/eot6COwCPF0
