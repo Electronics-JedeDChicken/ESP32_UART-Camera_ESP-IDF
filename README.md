@@ -4,7 +4,7 @@ This project utilizes the esp32-camera library by Espressif Systems. Also, altho
 
 This UART Camera allows users to click the button to take a photo then transfer and save it serially to another computer via UART- 
 
-1. The project utilizes a 10kΩ pull-up button with debounce and interrupt, and installed ISR (Interrupt Service Routine), instead of usual blocking polling.
+1. The project utilizes a 10kΩ pull-up button w/ debounce and interrupt, and installed ISR (Interrupt Service Routine), instead of usual blocking polling.
 
 2. FreeRTOS task, awaken by ISR, was also used for capturing the photos and sending UART header and image files.
 
