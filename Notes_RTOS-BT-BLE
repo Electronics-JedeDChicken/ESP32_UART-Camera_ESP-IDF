@@ -1,0 +1,27 @@
+OS (e.g. Windows, Linux, MacOS) > RTOS (e.g FreeRTOS, )
+RTOS (Real-time OS)- to ensure tasks execute w/in predictable timing
+*Determinism not speed/fast
+*Normal OS- best effort timing
+*Types of Real-time systems- Hard (missing deadline is unacceptable, e.g. aircraft control & brake) vs 
+    *Soft (occasional missed deadlines are acceptable, e.g. streaming&gaming) vs 
+    *Firm (late results have no value but occasional misses are tolerable, e.g. sensor sampling)
+
+RTOS (e.g. FreeRTOS) typically provides- 
+*Task management&scheduling
+*Prio
+*Preemption- 
+*Interrupt handling
+*Timers vs Counters
+*Queues, Semaphores (& Notifs?), Mutexes (if 2 tasks want the same thing), Event Groups
+*Mem management
+
+FreeRTOS- APIs..., built into ESP-IDF so no need to install separately
+*vs Bare Metal (everything runs in 1 loop, simple&small but blocking & harder to scale)
+
+BT Classic (e.g. SPP)
+*For continuous data streaming, like UART but wireless
+*Slower connection time?
+BLE (e.g. GATT [hierarchy..., organizes data into services&characteristics w/ UUIDs])
+*For small packets
+*Low-pow comm
+*Almost same data rate, and range?
