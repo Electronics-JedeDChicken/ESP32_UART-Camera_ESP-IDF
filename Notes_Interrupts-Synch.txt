@@ -23,7 +23,7 @@ Higher prio task- suppose you give gpio intr the lowest prio, this still means t
 *Intr prio & Task prio are separate (Intr prio > Task prio always)
 If ISR wakes low-prio task then nothing changes (higher-prio task keeps on running)
 *Low prio isn't ignored but its state changes to ready
-*FreeRTOS task states- Running, Ready (can run, waiting for CPU), Blocked (waiting, queue/semaphore/delay), Suspended (explicitly)
+*FreeRTOS task states (see notes...)- Running, Ready (can run, waiting for CPU), Blocked (waiting, queue/semaphore/delay), Suspended (explicitly)
 *Intr states (not formal but mental model)- Disabled > Enabled(Waiting) > (Event occurs) > Pending > (CPU accepts it) > Running ISR > ISR finishes > Enabled(Waiting)
 
 ISR- func that runs when intr occurs
@@ -81,7 +81,7 @@ void <task>(void *Parameter) {
 }
 */
 
-W/o RTOS (intr simply intr's CPI) vs W/ FreeRTOS (intr may need to wake task, thus we have ...FromISR() funcs)
+W/o RTOS (intr simply intr's CPU) vs W/ FreeRTOS (intr may need to wake task, thus we have ...FromISR() funcs)
 *Rule of Thumb- don't call normal FreeRTOS APIs from ISR, normal APIs assume they're running inside task & ISR isn't task
     *What will happen- 
     *vTaskNotifyGiveFromISR()- wake 1task, no data, fastest, great replacement for binary semaphores

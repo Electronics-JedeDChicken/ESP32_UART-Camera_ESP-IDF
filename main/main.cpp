@@ -7,17 +7,34 @@
 // See Notes.txt...
 // https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/index.html
 // https://youtu.be/eot6COwCPF0
-// To dos- board (selected custom board...), port, psram, 
-    // Increase baud rate (for more throughput), improve img qual, on flash when needed..., throw away technique
-    // UART protocol- simple vs standard vs w/ markers (magic#?)...
-    // Btn as interrupt not polling, Btn debounce, Tasks&Schedule
-        // Ignore presses while busy (processing please wait...)
-    // Multiple imgs w/ timestamps&idx's- let python handle
-        // For idx- python scans directory to know latest idx > send to esp32 > esp32 uses that
-    // Reliability- check size, ACKs, retransmissions, timeout, #retransmissions
-        // CRC, packetize img
-    // Refactor receiver.py, 
-    // else vs no else...
+// To dos- board (selected custom board...), port, psram (de-limited options?...), 
+// Increase baud rate (for more throughput), improve img qual, on flash when needed..., throw away technique
+// UART protocol- simple vs standard () vs w/ markers (magic#?)...
+// Btn as interrupt not polling, Btn debounce, Tasks&Schedule
+    // Ignore presses while busy (processing please wait..., queue instead?)
+// Multiple imgs w/ timestamps&idx's- let python handle
+    // For idx- python scans directory to know latest idx > send to esp32 > esp32 uses that
+// Reliability- check size, ACKs, retransmissions, timeout, #retransmissions
+    // CRC, packetize img
+// Refactor receiver.py, 
+// else vs no else...
+
+// Roadmap
+// Installations- platformio & esp-idf
+// Other Prereqs- uploading, serial monitor, main.cpp, check GPIO... (blink led, read btn state, detect btn press/release, polling&interrupt)
+// FreeRTOS- tasks, vTaskDelay()
+// UART- send txt then receive on laptop (py)
+// Camera- init ov2640, verify psram, capture frame, print img size
+// UART Img Protocol- header, size, jpeg data (packet&framing)
+// Send JPEG- 
+// Finalize- classes, debounce, multiple photos, timestamp, CRC/checksum, 
+
+// Flow- 
+
+// Tips
+// Close serial monitor when not using (to upload...)
+// Just upload (not upload and monitor) then manually monitor in serial monitor
+// Full clean (clean build envi/folder & dependencies..., when added dependencies?) vs Erase Flash ()
 
 // FreeRTOS (https://youtu.be/WQGAs9MwXno)- xTaskCreate()... scheduling, vTaskDelay()
 // UART- 
@@ -29,21 +46,6 @@
         // Verbose- wordy?
         // Adjust in Menuconfig- Component config > Log output
 
-// Tips
-// Close serial monitor when not using (to upload...)
-// Just upload (not upload and monitor) then manually monitor in serial monitor
-// Full clean (clean build envi/folder & dependencies..., when added dependencies?) vs Erase Flash ()
-
-// Roadmap
-// Installations- platformio & esp-idf
-// Other Prereqs- uploading, serial monitor, main.cpp, check GPIO... (blink led, read btn state, detect btn press/release, polling&interrupt)
-// FreeRTOS- tasks, vTaskDelay()
-// UART- send txt then receive on laptop (py)
-// Camera- init ov2640, verify psram, capture frame, print img size
-// UART Img Protocol- header, size, jpeg data (packet&framing)
-// Send JPEG- 
-// Finalize- classes, debounce, multiple photos, CRC/checksum, timestamp, 
-
 // Headers- C/C++ > Other Posix > IDF Headers > Component > Public > Private Headers
 // #include ”<>” (custom? / project / esp-idf component headers) vs <<>> (standard C/C++ library)
     // include/ folder…- platformio automatically adds this to compiler’s search path
@@ -54,7 +56,7 @@
 #include <string>
 // #include <string.h>  // For C
 // #include <cstring>  // For C++, legacy & low-level
-#include <cstdint>
+#include <cstdint>  // For uint<n>_t
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"  // These 2 has vTaskDelay(), 
@@ -85,7 +87,7 @@
         // ESP-IDF logging expects C str?
 static const char *CAMERA_TAG = "CAMERA_MAIN";
 
-volatile TickType_t tick_prev = 0;
+volatile TickType_t tick_prev = 0;  // like Millis()
 constexpr TickType_t DEBOUNCE_TICKS = pdMS_TO_TICKS(50);  // 50ms
 
 // Declarations
@@ -108,7 +110,7 @@ void uartSendImg(const uint8_t * img, size_t size);
 
 // ISR
 static void IRAM_ATTR btnISRHandler(void *arg) {  // Call this upon btn press
-    BaseType_t higherPriorityTaskWoken = pdFALSE;
+    BaseType_t higherPriorityTaskWoken = pdFALSE;  // All ISRs have this, FreeRTOS sets this to pdTRUE if higher-prio task becomes ready
     
     // Debounce
     TickType_t tick_current = xTaskGetTickCountFromISR();
@@ -117,10 +119,11 @@ static void IRAM_ATTR btnISRHandler(void *arg) {  // Call this upon btn press
     }
     tick_prev = tick_current;
 
+    // Wake a FreeRTOS task
     vTaskNotifyGiveFromISR(camera_task_handle, &higherPriorityTaskWoken);
 
     if (higherPriorityTaskWoken) {
-        portYIELD_FROM_ISR();
+        portYIELD_FROM_ISR();  // Scheduler immediately (context) switch to highest-prio unblocked/ready task if needed
     }
 }
 
@@ -142,10 +145,10 @@ extern "C" void app_main() {  // Force C linkage so framework / C-based bootload
     xTaskCreate(  // Dynamic
         loggerTask,     // Task func
         "LoggerTask",   // Task name, for debugging (seen when all running tasks are previewed...)
-        2048,           // Stack size, 1000 can be enough?
+        2048,           // Stack size, 1000 can be enough?, amt RAM mem allocated, this is 2048 32bits...
         NULL,           // Params, no params for now...
         1,              // Prio, lower the lower prio (important when 2 tasks compete for resources)
-        NULL            // Task handle, allows to w/ task from w/in other tasks
+        NULL            // Task handle, allows to w/ task from w/in other tasks, to interact w/ this task in other parts of code...
     );
 
     xTaskCreate(
@@ -160,7 +163,7 @@ extern "C" void app_main() {  // Force C linkage so framework / C-based bootload
     xTaskCreate(
         cameraTask, 
         "CameraTask", 
-        4096, 
+        4096,  // 16kB?
         NULL, 
         2, 
         &camera_task_handle
@@ -204,7 +207,7 @@ extern "C" void app_main() {  // Force C linkage so framework / C-based bootload
 }
 
 // Definitions
-// Inits
+// Inits- Basic setups...
 void gpioInit() {
     // GPIO
     // esp_err_t
@@ -331,8 +334,9 @@ void uartSendSize(size_t size) {
 
 void uartSendSize(size_t size) {
     uint32_t size_32 = static_cast<uint32_t>(size);
-    // 
+    // for implicitly related types
     uart_write_bytes(UART_CHANNEL, reinterpret_cast<const char *>(&size_32), sizeof(size_32));
+    // reinterpret_cast- low-lvl & unsafe bit-reinterpretation bet. unrelated types (e.g. uint32_t to const char)
 }
 
 void uartSendImg(const uint8_t *img, size_t size) {  // const so we won't modify it...

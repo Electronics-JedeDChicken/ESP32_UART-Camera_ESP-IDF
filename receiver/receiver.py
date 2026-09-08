@@ -55,14 +55,14 @@ while True:
             break
         transmission_started = True
         # Verify img
-        if len(header) != 4: 
+        if len(header) != 4:  # 1-3
             print(f"Error: Received {len(header)}/4 header bytes, retrying (Attempt {i+1}/3)...")
             ser.write(b'N')  # Expects bytes not str's, NACK
-            ser.flush()  #
+            ser.flush()  # Blocks exec & waits 'til all data's completely transmitted
             ser.reset_input_buffer()  # Clear buffer of any leftover bytes
             continue
         else: 
-            size = struct.unpack("<I", header)[0]  # < (little endian), I (uint32_t)
+            size = struct.unpack("<I", header)[0]  # < (little endian), I (uint32_t), to decimal
             # print(header)
             # print(header.hex())
             print(f"Received img size: {size} bytes")

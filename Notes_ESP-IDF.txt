@@ -30,7 +30,8 @@
             // ESP-IDF: Open ESP-IDF Terminal
         // idf.py create-project -p . <name>
         // start idf.py menuconfig- remove start (start to launch idf.py as separate program...)
-        // components/, git clone <repository> <directory>
+        // idf_components.yml
+            // components/, git clone <repository> <directory>
 
 // 3 ways to import library- 
     // platformio.ini... library... (doesn't work w/ espidf but good for arduino?)
@@ -58,11 +59,11 @@ board_build.cmake_extra_args =
         // 
 // Esp-idf (iot dev framework by espressif) vs arduino ide & micropython (simpler)
 
-// Menuconfig- seen in platformio&extension... Platform > Run Menuconfig; FreeRTOS & filesystem support & LWIP...; 
+// Menuconfig- seen in platformio&extension... Platform > Run Menuconfig; FreeRTOS & filesystem support & LWIP [lightweight IP?]...; 
     // adjust clock speed / cpu freq, flash mem size, 
 // CMake (to generate build files...), Ninja (small bld system w/ focus on speed), Xtensa (for Xtensa procie)
 // sdkconfig, sdkconfig.old, version.txt..., build/
-    // ...-dirty- means some files were modified
+    // ...-dirty (in sdkconfig?)- means some files were modified
 // Important files- bootloader.bin (.bin- load to MCU), partition-table.bin (firmware partition addr's), 
     // <esp_proj>.bin, <esp_proj>.elf (for debugging firmware)
 
